@@ -1,0 +1,24 @@
+LibBOt
+Copyright 2026 JsSanchez08 (https://github.com/JsSanchez08)
+
+This product is licensed under the Apache License, Version 2.0
+(the "License"); you may not use this product except in compliance
+with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This product includes third-party software:
+
+- libgen-api (MIT License) — https://github.com/harrison-broadbent/libgen-api
+- Flet (Apache License 2.0) — https://flet.dev
+- requests (Apache License 2.0) — https://requests.readthedocs.io
+- BeautifulSoup4 (MIT License) — https://www.crummy.com/software/BeautifulSoup/
+- lxml (BSD License) — https://lxml.de
+- Pydantic (MIT License) — https://docs.pydantic.dev
+
+LibBOt is a client application that lets the end user search and download
+books from Library Genesis and Anna's Archive. The authors of LibBOt do
+not host, mirror, or distribute any of the indexed content. The legal
+responsibility for using this software in compliance with applicable
+copyright and intellectual property laws in the user's jurisdiction
+rests entirely with the end user.

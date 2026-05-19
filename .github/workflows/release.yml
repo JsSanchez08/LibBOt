@@ -1,0 +1,106 @@
+name: Release
+
+# Se dispara al pushear un tag con formato vX.Y.Z. Construye LibBOt.exe,
+# extrae las notas del tag (lo que escribiste con `git tag -a vX.Y.Z -m "..."`),
+# calcula SHA256 y publica un GitHub Release con todo eso.
+#
+# Uso típico:
+#   git tag -a v3.0.1 -m "New: nuevo filtro X
+#   Hotfix: bug Y"
+#   git push origin v3.0.1
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build LibBOt.exe and publish release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Necesitamos el tag completo (con su mensaje anotado) para las notas.
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Build LibBOt-v<version>.exe with PyInstaller
+        shell: pwsh
+        run: python scripts/build_exe.py
+
+      - name: Locate built .exe and compute SHA256
+        id: hash
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter 'LibBOt-v*.exe' | Select-Object -First 1
+          if (-not $exe) {
+            throw "No se encontró dist/LibBOt-v*.exe tras el build"
+          }
+          $size = [math]::Round($exe.Length / 1MB, 1)
+          $sha = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash
+          Write-Host "$($exe.Name) -> $size MB"
+          Write-Host "SHA256        -> $sha"
+          "sha256=$sha"   | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "exe_path=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "exe_name=$($exe.Name)"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Build release notes from tag message + SHA256
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          BUILD_SHA: ${{ steps.hash.outputs.sha256 }}
+        run: |
+          $tag = $env:TAG_NAME
+          # `actions/checkout` no siempre baja el tag object completo del
+          # tag anotado; forzamos el fetch para que `--format='%(contents)'`
+          # lea el mensaje real del tag y no el del commit subyacente.
+          git fetch --force --tags origin "refs/tags/${tag}:refs/tags/${tag}"
+          $body = git for-each-ref --format='%(contents)' "refs/tags/${tag}"
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            $body = git log -1 --pretty=%B $tag
+          }
+          $fence = [char]0x60 + [char]0x60 + [char]0x60
+          Set-Content -Path release_notes.md -Value $body -Encoding utf8
+          Add-Content -Path release_notes.md -Value ""
+          Add-Content -Path release_notes.md -Value "Verify your app using SHA256"
+          Add-Content -Path release_notes.md -Value $fence
+          Add-Content -Path release_notes.md -Value $env:BUILD_SHA
+          Add-Content -Path release_notes.md -Value $fence
+          Write-Host "--- Release notes ---"
+          Get-Content release_notes.md
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.hash.outputs.exe_path }}
+          fail_on_unmatched_files: true
+          body_path: release_notes.md
+          name: "LibBOt ${{ github.ref_name }}"
+
+      - name: Upload .exe as workflow artifact (runs manuales)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.hash.outputs.exe_name }}
+          path: ${{ steps.hash.outputs.exe_path }}
+          if-no-files-found: error
+          retention-days: 30

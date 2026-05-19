@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+*.spec
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Datos persistidos en runtime (legacy JSON, conservados hasta la migración)
+data/favorites.json
+data/history.json
+data/downloads/
+data/*.migrated
+
+# PyInstaller / Flet build artifacts
+*.toc
+*.pkg
+
+# Editores e IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Herramientas de agente
+.claude/
+.codegraph/
